@@ -1,120 +1,53 @@
 const express = require("express");
-const pusher = require("./pusher.js");
+// const pusher = require("./pusher.js");
 const db = require("./firebase.js").firestore;
 const functions = require("./functions");
+const http = require("http");
+const { Server } = require("socket.io");
+
+// initialize app
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: "http://localhost:3000", methods: ["GET", "POST"] },
+});
 
 // initialize Router
 const router = express.Router();
 
-router.post("/userDoc", (req, res) => {
-  const { user } = req.body;
-  if (!user) {
-    return res.status(401).send("Invalid user");
-  }
-  const unsubscribe = db()
-    .collection("users")
-    .doc(user.email)
-    .onSnapshot((snap) => {
-      if (snap.exists) {
-        pusher.trigger("userDoc", "update", { data: snap.data() });
-      } else {
-        pusher.trigger("userDoc", "update", { data: false });
-      }
-    });
-  res.status(200).send("Request Successful");
-  return unsubscribe;
-});
+// listen to socket events
+io.on("connection", (socket) => {
+  socket.on("disconnect", () => {
+    // console.log("user disconnected");
+  });
 
-router.post("/customersCol", (req, res) => {
-  const { user } = req.body;
-  if (!user) {
-    return res.status(401).send("Invalid user");
-  }
-  const unsubscribe = db()
-    .collection("users")
-    .doc(user?.email)
-    .collection("customers")
-    .orderBy("lastActivity", "desc")
-    .onSnapshot((snap) => {
-      let cst = [];
-      snap.forEach((doc) => {
-        cst.push({
-          id: doc?.id,
-          name: doc?.data()?.name,
-          balance: doc?.data()?.balance,
-        });
-      });
-      pusher.trigger("customersCol", "update", { data: cst });
-    });
-  res.status(200).send("Request Successful");
-  return unsubscribe;
-});
+  socket.on("userDoc", async ({ user }, callback) => {
+    if (!user) {
+      return callback("Invalid user");
+    }
+    functions.userDoc(socket, user);
+  });
 
-router.post("/custDoc", (req, res) => {
-  const { user, custId } = req.body;
-  if (!user || !custId) {
-    return res.status(401).send("Invalid details");
-  }
-  const unsubscribe = db()
-    .collection("users")
-    .doc(user?.email)
-    .collection("customers")
-    .doc(custId)
-    .onSnapshot((snap) => {
-      if (snap.exists) {
-        pusher.trigger("custDoc", "update", { data: snap.data() });
-      }
-    });
-  res.status(200).send("Request Successful");
-  return unsubscribe;
-});
+  socket.on("customersCol", async ({ user }, callback) => {
+    if (!user) {
+      return callback("Invalid user");
+    }
+    functions.customersCol(socket, user);
+  });
+  
+  socket.on("custDoc", async ({ user, custId }, callback) => {
+    if (!user || !custId) {
+      return callback("Invalid user");
+    }
+    functions.custDoc(socket, user, custId);
+  });
 
-router.post("/transactionsCol", async (req, res) => {
-  const { user, custId } = req.body;
-  if (!user) {
-    return res.status(401).send("Invalid user");
-  }
-  const unsubscribe = db()
-    .collection("users")
-    .doc(user?.email)
-    .collection("customers")
-    .doc(custId)
-    .onSnapshot((snapshot) => {
-      snapshot.ref
-        .collection("transactions")
-        .orderBy("timestamp", "desc")
-        .onSnapshot(async (snap) => {
-          const customerName = await snapshot.ref
-            .get()
-            .then((doc) => doc.data().name);
-          let transactions = [],
-            sent = 0,
-            received = 0;
-          snap.docs.forEach((doc) => {
-            transactions.push({
-              id: doc.id,
-              amount: doc.data().amount,
-              receipt: doc.data().receipt,
-              timestamp: doc.data().timestamp,
-              desc: doc.data().desc,
-              by:
-                doc.data().by === ""
-                  ? "NA"
-                  : doc.data().by === user?.email
-                  ? user?.name
-                  : customerName,
-            });
-            doc.data().amount >= 0
-              ? (received += Number(doc.data().amount))
-              : (sent -= Number(doc.data().amount));
-          });
-          pusher.trigger("transactionsCol", "update", {
-            data: { transactions, sent, received },
-          });
-        });
-    });
-  res.status(200).send("Request Successful");
-  return unsubscribe;
+  socket.on("transactionsCol", async ({ user, custId }, callback) => {
+    if (!user || !custId) {
+      return callback("Invalid user");
+    }
+    functions.transactionsCol(socket, user, custId);
+  });
 });
 
 router.post("/addCustomer", (req, res) => {
@@ -197,4 +130,4 @@ router.post("/addTransaction", (req, res) => {
     );
 });
 
-module.exports = router;
+module.exports = { app, router, server };
