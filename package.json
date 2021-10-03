@@ -13,6 +13,7 @@
     "express": "^4.17.1",
     "firebase-admin": "^9.11.1",
     "pusher": "^5.0.0",
+    "socket.io": "^4.2.0",
     "stream": "^0.0.2"
   },
   "keywords": [],
