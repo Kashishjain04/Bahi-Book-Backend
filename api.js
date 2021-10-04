@@ -81,6 +81,14 @@ router.post('/addCustomer', (req, res) => {
 		});
 });
 
+router.post('/editCustomer', (req, res) => {
+	const {custId, name, user} = req.body;
+	if(!custId || !name || !user) {
+		return res.status(400).send('Invalid data');
+	}
+	functions.editCustomer(res, user, custId, name);
+})
+
 router.post('/addTransaction', (req, res) => {
 	const {
 		user,

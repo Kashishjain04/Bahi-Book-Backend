@@ -21,7 +21,11 @@ const uploadFile = (
 	const storageRef = storage().bucket('bahi-book.appspot.com');
 	const file = storageRef.file(`receipts/${transRef.id}`);
 	bufferStream
-		.pipe(file.createWriteStream({ metadata: { contentType: fileType || 'image/*' } }))
+		.pipe(
+			file.createWriteStream({
+				metadata: { contentType: fileType || 'image/*' },
+			})
+		)
 		.on('error', () => {
 			res.status(500).send('Error Uploading File');
 		})
@@ -126,7 +130,7 @@ const dbUpdates = (
 			lastActivity,
 		})
 		.then(() => {
-			res.status(200).send({message: 'Request Successful'});
+			res.status(200).send({ message: 'Request Successful' });
 		})
 		.catch((err) => console.log(err));
 };
@@ -162,17 +166,32 @@ const addCustomer = (res, user, id, name) => {
 		.collection('customers')
 		.doc(user?.email)
 		.set({ name: user?.name, balance: 0, lastActivity })
-		.then(() => res.status(200).send({message: 'Request Successful'}))
-		.catch(() => res.status(500).send({error: 'Invalid Error'}));
+		.then(() => res.status(200).send({ message: 'Request Successful' }))
+		.catch(() => res.status(500).send({ error: 'Invalid Error' }));
 };
 
 const createUser = (user, res) => {
 	db()
 		.collection('users')
 		.doc(user.email)
-		.set({ name: user.name }, { merge: true })
-    .then(() => res.status(200).send('User registered successfully'))
+		.set({ name: user.name, picture: user.picture }, { merge: true })
+		.then(() => res.status(200).send('User registered successfully'))
 		.catch(() => res.status(500).send('An error occurred'));
+};
+
+const editCustomer = (res, user, custId, name) => {
+	db()
+		.collection('users')
+		.doc(user?.email)
+		.collection('customers')
+		.doc(custId)
+		.update({ name })
+		.then(() =>
+			res.status(200).send({ message: 'Customer edited successfully' })
+		)
+		.catch((err) =>
+			res.status(500).send({ error: err.message || 'Invalid Error' })
+		);
 };
 
 // realtime firebase functions
@@ -271,7 +290,8 @@ const functions = {
 	customersCol,
 	custDoc,
 	transactionsCol,
-  createUser,
+	createUser,
+	editCustomer,
 };
 
 module.exports = functions;
