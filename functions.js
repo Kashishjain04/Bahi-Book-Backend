@@ -253,11 +253,13 @@ const transactionsCol = (socket, user, custId) => {
 					const customerName = await snapshot.ref
 						.get()
 						.then((doc) => doc.data().name);
-					let transactions = [],
-						sent = 0,
+					let sent = 0,
 						received = 0;
-					snap.docs.forEach((doc) => {
-						transactions.push({
+					const transactions = snap.docs.map((doc) => {
+						doc.data().amount >= 0
+							? (received += Number(doc.data().amount))
+							: (sent -= Number(doc.data().amount));
+						return {
 							id: doc.id,
 							amount: doc.data().amount,
 							receipt: doc.data().receipt,
@@ -269,11 +271,26 @@ const transactionsCol = (socket, user, custId) => {
 									: doc.data().by === user?.email
 									? user?.name
 									: customerName,
-						});
-						doc.data().amount >= 0
-							? (received += Number(doc.data().amount))
-							: (sent -= Number(doc.data().amount));
+						};
 					});
+					// snap.docs.forEach((doc) => {
+					// 	transactions.push({
+					// 		id: doc.id,
+					// 		amount: doc.data().amount,
+					// 		receipt: doc.data().receipt,
+					// 		timestamp: doc.data().timestamp,
+					// 		desc: doc.data().desc,
+					// 		by:
+					// 			doc.data().by === ''
+					// 				? 'NA'
+					// 				: doc.data().by === user?.email
+					// 				? user?.name
+					// 				: customerName,
+					// 	});
+					// 	doc.data().amount >= 0
+					// 		? (received += Number(doc.data().amount))
+					// 		: (sent -= Number(doc.data().amount));
+					// });
 					socket.emit('transactionsCol', {
 						data: { transactions, sent, received },
 					});
