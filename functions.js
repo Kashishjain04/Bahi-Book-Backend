@@ -146,13 +146,6 @@ const addCustomer = (res, user, id, name) => {
 		.doc(id)
 		.set({ name, balance: 0, lastActivity });
 
-	db()
-		.collection('users')
-		.doc(user?.email)
-		.update({
-			customers: { [id]: name },
-		});
-
 	// Create customer's doc if not exist
 	db()
 		.collection('users')
@@ -177,6 +170,15 @@ const createUser = (user, res) => {
 		.set({ name: user.name, picture: user.picture }, { merge: true })
 		.then(() => res.status(200).send('User registered successfully'))
 		.catch(() => res.status(500).send('An error occurred'));
+};
+
+const updateUser = (user, res) => {
+	db()
+		.collection('users')
+		.doc(user.email)
+		.update({ name: user.name, picture: user.picture })
+		.then(() => res.status(200).send('User updated successfully'))
+		.catch(() => res.status(500).send({ error: 'An error occurred' }));
 };
 
 const editCustomer = (res, user, custId, name) => {
@@ -215,14 +217,11 @@ const customersCol = (socket, user) => {
 		.collection('customers')
 		.orderBy('lastActivity', 'desc')
 		.onSnapshot((snap) => {
-			let cst = [];
-			snap.forEach((doc) => {
-				cst.push({
-					id: doc?.id,
-					name: doc?.data()?.name,
-					balance: doc?.data()?.balance,
-				});
-			});
+			const cst = snap.docs.map((doc) => ({
+				id: doc?.id,
+				name: doc?.data()?.name,
+				balance: doc?.data()?.balance,
+			}));
 			socket.emit('customersCol', { data: cst });
 		});
 };
@@ -291,6 +290,7 @@ const functions = {
 	custDoc,
 	transactionsCol,
 	createUser,
+	updateUser,
 	editCustomer,
 };
 

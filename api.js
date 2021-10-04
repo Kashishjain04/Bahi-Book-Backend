@@ -58,6 +58,14 @@ router.post('/createUser', (req, res) => {
 	functions.createUser(user, res);
 });
 
+router.post('/updateUser', (req, res) => {
+	const { user } = req.body;
+	if (!user) {
+		return res.status(400).send('Invalid user');
+	}
+	functions.updateUser(user, res);
+});
+
 router.post('/addCustomer', (req, res) => {
 	const { id, name, user } = req.body;
 	if (!id || !name || !user) {
@@ -74,7 +82,7 @@ router.post('/addCustomer', (req, res) => {
 		.get()
 		.then((doc) => {
 			if (doc.exists) {
-				return res.status(500).send({ error: 'Customer already exists' });
+				return res.status(500).send({ error: 'Friend already exists' });
 			} else {
 				functions.addCustomer(res, user, id, name);
 			}
