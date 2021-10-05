@@ -1,6 +1,8 @@
 const db = require('./firebase.js').firestore;
 const storage = require('./firebase.js').storage;
+const axios = require('axios').default;
 const stream = require('stream');
+const expoPushUrl = 'https://exp.host/--/api/v2/push/send';
 
 const uploadFile = (
 	res,
@@ -105,7 +107,35 @@ const dbUpdates = (
 		db()
 			.collection('users')
 			.doc(customerId)
-			.update({ received: db.FieldValue.increment(Math.abs(amt)) });
+			.get()
+			.then((doc) => {				
+				doc.ref.update({ received: db.FieldValue.increment(Math.abs(amt)) });
+				let msgs = [];
+				doc.data().expoPushTokens.forEach((token) => {
+					msgs.push({
+						to: token,
+						title: user.name + ' added a transaction with you',
+						body: 'You got ₹' + Math.abs(amt),
+						data: {
+							type: 'transaction',
+							friendId: user.email,
+							transactionId: transRef.id,
+							amount: Math.abs(amt),
+
+						},
+					});
+				});
+				if (msgs.length > 0)
+					axios({
+						url: expoPushUrl,
+						method: 'POST',
+						data: msgs,
+						headers: {
+							accept: 'application/json',
+							'content-type': 'application/json',
+						},
+					}).catch((err) => console.log(err));
+			});
 	} else {
 		// Updating self received amount
 		db()
@@ -116,7 +146,35 @@ const dbUpdates = (
 		db()
 			.collection('users')
 			.doc(customerId)
-			.update({ sent: db.FieldValue.increment(Math.abs(amt)) });
+			.get()
+			.then((doc) => {				
+				doc.ref.update({ sent: db.FieldValue.increment(Math.abs(amt)) });
+				let msgs = [];
+				doc.data().expoPushTokens.forEach((token) => {
+					msgs.push({
+						to: token,
+						title: user.name + ' added a transaction with you',
+						body: 'You gave ₹' + Math.abs(amt),
+						data: {
+							type: 'transaction',
+							friendId: user.email,
+							transactionId: transRef.id,
+							amount: Math.abs(amt),
+
+						},
+					});
+				});
+				if (msgs.length > 0)
+					axios({
+						url: expoPushUrl,
+						method: 'POST',
+						data: msgs,
+						headers: {
+							accept: 'application/json',
+							'content-type': 'application/json',
+						},
+					}).catch((err) => console.log(err));
+			});			
 	}
 	// Updating customer's balance and activity
 	custRef.update({
@@ -156,10 +214,41 @@ const addCustomer = (res, user, id, name) => {
 	db()
 		.collection('users')
 		.doc(id)
-		.collection('customers')
-		.doc(user?.email)
-		.set({ name: user?.name, balance: 0, lastActivity })
-		.then(() => res.status(200).send({ message: 'Request Successful' }))
+		.get()
+		.then((doc) => {
+			doc.ref
+				.collection('customers')
+				.doc(user?.email)
+				.set({ name: user?.name, balance: 0, lastActivity })
+				.then(() => {
+					let msgs = [];
+					doc.data().expoPushTokens.forEach((token) => {
+						msgs.push({
+							to: token,
+							title: 'Friend Added',
+							body: user.name + ' added you as their friend.',
+							data: {
+								type: 'friend',
+								friendId: user.email,
+							},
+						});
+					});
+					if (msgs.length > 0)
+						axios({
+							url: expoPushUrl,
+							method: 'POST',
+							data: msgs,
+							headers: {
+								accept: 'application/json',
+								'content-type': 'application/json',
+							},
+						})
+							.then(() =>
+								res.status(200).send({ message: 'Request Successful' })
+							)
+							.catch(() => res.status(500).send({ error: 'Invalid Error' }));
+				});
+		})
 		.catch(() => res.status(500).send({ error: 'Invalid Error' }));
 };
 
@@ -176,7 +265,11 @@ const updateUser = (user, res) => {
 	db()
 		.collection('users')
 		.doc(user.email)
-		.update({ name: user.name, picture: user.picture })
+		.update({
+			name: user.name,
+			picture: user.image,
+			expoPushTokens: db.FieldValue.arrayUnion(user.pushToken),
+		})
 		.then(() => res.status(200).send('User updated successfully'))
 		.catch(() => res.status(500).send({ error: 'An error occurred' }));
 };
@@ -226,7 +319,7 @@ const customersCol = (socket, user) => {
 		});
 };
 
-const custDoc = (socket, user, custId) => {
+const realtimeCustDoc = (socket, user, custId) => {
 	db()
 		.collection('users')
 		.doc(user?.email)
@@ -237,6 +330,23 @@ const custDoc = (socket, user, custId) => {
 				socket.emit('custDoc', { data: snap.data() });
 			}
 		});
+};
+
+const getCustDoc = (res, user, custId) => {
+	db()
+		.collection('users')
+		.doc(user?.email)
+		.collection('customers')
+		.doc(custId).get()
+		.then((doc) => {
+			if (doc.exists) {
+				res.status(200).send({message: 'success', data: doc.data()})
+			}else{
+				res.status(500).send({error: 'ivalid friend id', data: null})
+			}
+		}).catch((err) => {
+			res.status(500).send({error: err || 'ivalid error', data: null})
+		})
 };
 
 const transactionsCol = (socket, user, custId) => {
@@ -304,7 +414,8 @@ const functions = {
 	addCustomer,
 	userDoc,
 	customersCol,
-	custDoc,
+	realtimeCustDoc,
+	getCustDoc,
 	transactionsCol,
 	createUser,
 	updateUser,

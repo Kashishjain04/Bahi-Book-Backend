@@ -39,7 +39,7 @@ io.on('connection', (socket) => {
 		if (!user || !custId) {
 			return callback('Invalid user');
 		}
-		functions.custDoc(socket, user, custId);
+		functions.realtimeCustDoc(socket, user, custId);
 	});
 
 	socket.on('transactionsCol', async ({ user, custId }, callback) => {
@@ -153,5 +153,13 @@ router.post('/addTransaction', (req, res) => {
 			url
 		);
 });
+
+router.post('/getCustomerDoc', (req, res) => {
+	const {user, custId} = req.body;
+	if (!user || !custId) {
+		return res.status(400).send('Invalid data');
+	}
+	functions.getCustDoc(res, user, custId);
+})
 
 module.exports = { app, router, server };
