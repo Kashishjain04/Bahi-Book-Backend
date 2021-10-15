@@ -1,5 +1,5 @@
-const db = require("./firebase.js").firestore;
-const messaging = require("./firebase.js").messaging;
+const db = require("../firebase.js").firestore;
+const messaging = require("../firebase.js").messaging;
 const axios = require("axios").default;
 const expoPushUrl = "https://exp.host/--/api/v2/push/send";
 
