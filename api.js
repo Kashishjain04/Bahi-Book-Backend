@@ -95,6 +95,14 @@ router.post('/editCustomer', (req, res) => {
 		return res.status(400).send('Invalid data');
 	}
 	functions.editCustomer(res, user, custId, name);
+});
+
+router.post('/getCustomerDoc', (req, res) => {
+	const {user, custId} = req.body;
+	if (!user || !custId) {
+		return res.status(400).send('Invalid data');
+	}
+	functions.getCustDoc(res, user, custId);
 })
 
 router.post('/addTransaction', (req, res) => {
@@ -154,12 +162,12 @@ router.post('/addTransaction', (req, res) => {
 		);
 });
 
-router.post('/getCustomerDoc', (req, res) => {
-	const {user, custId} = req.body;
-	if (!user || !custId) {
+router.post('/deleteTransaction', (req, res) => {
+	const {user, custId, transId} = req.body;
+	if(!user || !custId || !transId) {
 		return res.status(400).send('Invalid data');
 	}
-	functions.getCustDoc(res, user, custId);
+	functions.deleteTransaction(res, user, custId, transId);
 })
 
 module.exports = { app, router, server };

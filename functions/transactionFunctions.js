@@ -1,7 +1,7 @@
 const db = require("../firebase.js").firestore;
 const storage = require("../firebase.js").storage;
 const stream = require("stream");
-const notificationFunctions = require('./notificationFunctions.js');
+const notificationFunctions = require("./notificationFunctions.js");
 
 const uploadFile = (
 	res,
@@ -176,9 +176,79 @@ const dbUpdates = (
 		.catch((err) => console.log(err));
 };
 
+const deleteTransaction = async (res, user, custId, transId) => {
+	// gave -> -ve
+	// got -> +ve
+	// balance -= amount
+	const userDocRef = db().collection("users").doc(user.email);
+	const custDocRef = db().collection("users").doc(custId);
+	const userCustRef = db()
+		.collection("users")
+		.doc(user.email)
+		.collection("customers")
+		.doc(custId);
+	const custUserRef = db()
+		.collection("users")
+		.doc(custId)
+		.collection("customers")
+		.doc(user.email);
+	const userTransRef = db()
+		.collection("users")
+		.doc(user.email)
+		.collection("customers")
+		.doc(custId)
+		.collection("transactions")
+		.doc(transId);
+	const custTransRef = db()
+		.collection("users")
+		.doc(custId)
+		.collection("customers")
+		.doc(user.email)
+		.collection("transactions")
+		.doc(transId);
+
+	// get amount of transaction
+	const amount = await userTransRef
+		.get()
+		.then((doc) => Number(doc.data().amount));
+	try {
+		// update total sent & recieved on user & customer documents
+		if (amount < 0) {
+			await userDocRef.update({
+				sent: db.FieldValue.increment(amount),
+			});
+			custDocRef.update({
+				received: db.FieldValue.increment(amount),
+			});
+		} else {
+			await userDocRef.update({
+				received: db.FieldValue.increment(-1 * amount),
+			});
+			custDocRef.update({
+				sent: db.FieldValue.increment(-1 * amount),
+			});
+		}
+		// update customer balance on user & customer documents
+		await userCustRef.update({
+			balance: db.FieldValue.increment(-1 * amount),
+		});
+		custUserRef.update({
+			balance: db.FieldValue.increment(amount),
+		});
+		// delete transaction from user & customer documents
+		await userTransRef.delete();
+		custTransRef.delete().then(() => {
+			res.status(200).send({ message: "success" });
+		});
+	} catch (error) {
+		res.status(500).send({ error: error.message || "Invalid Error" });
+	}
+};
+
 const transactionFunctions = {
-    uploadFile,
-    dbUpdates
-}
+	uploadFile,
+	dbUpdates,
+	deleteTransaction,
+};
 
 module.exports = transactionFunctions;
