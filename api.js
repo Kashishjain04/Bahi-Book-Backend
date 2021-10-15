@@ -1,7 +1,7 @@
 const express = require('express');
 // const pusher = require("./pusher.js");
 const db = require('./firebase.js').firestore;
-const functions = require('./functions');
+const functions = require('./functions/index.js');
 const http = require('http');
 const { Server } = require('socket.io');
 
