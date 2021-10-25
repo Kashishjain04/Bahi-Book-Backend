@@ -10,12 +10,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
 	cors: {
-		// origin: '*',
-		origin: [
-			"https://bahi-book.web.app",
-			"https://bahi-book.firebaseapp.com",
-			"http://localhost:3000"
-		],
+		origin: '*',
+		// origin: [
+		// 	"https://bahi-book.web.app",
+		// 	"https://bahi-book.firebaseapp.com",
+		// 	"http://localhost:3000"
+		// ],
 		methods: ["GET", "POST"],
 	},
 });
