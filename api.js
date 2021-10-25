@@ -1,137 +1,144 @@
-const express = require('express');
+const express = require("express");
 // const pusher = require("./pusher.js");
-const db = require('./firebase.js').firestore;
-const functions = require('./functions/index.js');
-const http = require('http');
-const { Server } = require('socket.io');
+const db = require("./firebase.js").firestore;
+const functions = require("./functions/index.js");
+const http = require("http");
+const { Server } = require("socket.io");
 
 // initialize app
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-	cors: { origin: '*', methods: ['GET', 'POST'] },
+	cors: {
+		origin: [
+			"https://bahi-book.web.app",
+			"https://bahi-book.firebaseapp.com",
+			"http://localhost:3000"
+		],
+		methods: ["GET", "POST"],
+	},
 });
 
 // initialize Router
 const router = express.Router();
 
 // listen to socket events
-io.on('connection', (socket) => {
-	socket.on('disconnect', () => {
+io.on("connection", (socket) => {
+	socket.on("disconnect", () => {
 		// console.log("user disconnected");
 	});
 
-	socket.on('userDoc', async ({ user }, callback) => {
+	socket.on("userDoc", async ({ user }, callback) => {
 		if (!user) {
-			return callback('Invalid user');
+			return callback("Invalid user");
 		}
 		functions.userDoc(socket, user);
 	});
 
-	socket.on('customersCol', async ({ user }, callback) => {
+	socket.on("customersCol", async ({ user }, callback) => {
 		if (!user) {
-			return callback('Invalid user');
+			return callback("Invalid user");
 		}
 		functions.customersCol(socket, user);
 	});
 
-	socket.on('custDoc', async ({ user, custId }, callback) => {
+	socket.on("custDoc", async ({ user, custId }, callback) => {
 		if (!user || !custId) {
-			return callback('Invalid user');
+			return callback("Invalid user");
 		}
 		functions.realtimeCustDoc(socket, user, custId);
 	});
 
-	socket.on('transactionsCol', async ({ user, custId }, callback) => {
+	socket.on("transactionsCol", async ({ user, custId }, callback) => {
 		if (!user || !custId) {
-			return callback('Invalid user');
+			return callback("Invalid user");
 		}
 		functions.transactionsCol(socket, user, custId);
 	});
 });
 
-router.post('/createUser', (req, res) => {
+router.post("/createUser", (req, res) => {
 	const { user } = req.body;
 	if (!user) {
-		return res.status(400).send('Invalid user');
+		return res.status(400).send("Invalid user");
 	}
 	functions.createUser(user, res);
 });
 
-router.post('/updateUser', (req, res) => {
+router.post("/updateUser", (req, res) => {
 	const { user } = req.body;
 	if (!user) {
-		return res.status(400).send('Invalid user');
+		return res.status(400).send("Invalid user");
 	}
 	functions.updateUser(user, res);
 });
 
-router.post('/addCustomer', (req, res) => {
+router.post("/addCustomer", (req, res) => {
 	const { id, name, user } = req.body;
 	if (!id || !name || !user) {
-		return res.status(400).send('Invalid data');
+		return res.status(400).send("Invalid data");
 	}
 	if (id === user.email) {
-		return res.status(400).send('Invalid data');
+		return res.status(400).send("Invalid data");
 	}
 	db()
-		.collection('users')
+		.collection("users")
 		.doc(user?.email)
-		.collection('customers')
+		.collection("customers")
 		.doc(id)
 		.get()
 		.then((doc) => {
 			if (doc.exists) {
-				return res.status(500).send({ error: 'Friend already exists' });
+				return res.status(500).send({ error: "Friend already exists" });
 			} else {
 				functions.addCustomer(res, user, id, name);
 			}
 		});
 });
 
-router.post('/editCustomer', (req, res) => {
-	const {custId, name, user} = req.body;
-	if(!custId || !name || !user) {
-		return res.status(400).send('Invalid data');
+router.post("/editCustomer", (req, res) => {
+	const { custId, name, user } = req.body;
+	if (!custId || !name || !user) {
+		return res.status(400).send("Invalid data");
 	}
 	functions.editCustomer(res, user, custId, name);
 });
 
-router.post('/getCustomerDoc', (req, res) => {
-	const {user, custId} = req.body;
+router.post("/getCustomerDoc", (req, res) => {
+	const { user, custId } = req.body;
 	if (!user || !custId) {
-		return res.status(400).send('Invalid data');
+		return res.status(400).send("Invalid data");
 	}
 	functions.getCustDoc(res, user, custId);
-})
+});
 
-router.post('/addTransaction', (req, res) => {
+router.post("/addTransaction", (req, res) => {
 	const {
 		user,
 		customerId,
 		isGiving,
 		amount,
 		desc,
-		url = '',
+		url = "",
 		fileType,
 	} = req.body;
 	if (!user || !customerId || isGiving === null || !amount) {
-		return res.status(400).send('Invalid data');
+		return res.status(400).send("Invalid data");
 	}
 	const custRef = db()
-			.collection('users')
+			.collection("users")
 			.doc(user?.email)
-			.collection('customers')
+			.collection("customers")
 			.doc(customerId),
-		transRef = custRef.collection('transactions').doc(),
+		transRef = custRef.collection("transactions").doc(),
 		selfRef = db()
-			.collection('users')
+			.collection("users")
 			.doc(customerId)
-			.collection('customers')
+			.collection("customers")
 			.doc(user.email),
-		selfTransRef = selfRef.collection('transactions').doc(transRef.id);
+		selfTransRef = selfRef.collection("transactions").doc(transRef.id);
 
-	if (url === '') {
+	if (url === "") {
 		functions.dbUpdates(
 			res,
 			custRef,
@@ -162,12 +169,12 @@ router.post('/addTransaction', (req, res) => {
 		);
 });
 
-router.post('/deleteTransaction', (req, res) => {
-	const {user, custId, transId} = req.body;
-	if(!user || !custId || !transId) {
-		return res.status(400).send('Invalid data');
+router.post("/deleteTransaction", (req, res) => {
+	const { user, custId, transId } = req.body;
+	if (!user || !custId || !transId) {
+		return res.status(400).send("Invalid data");
 	}
 	functions.deleteTransaction(res, user, custId, transId);
-})
+});
 
 module.exports = { app, router, server };
