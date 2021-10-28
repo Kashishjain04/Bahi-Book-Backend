@@ -122,7 +122,7 @@ const dbUpdates = (
 						transactionId: transRef.id,
 						amount: Math.abs(amt).toString(),
 					},
-					link: `/customer/${user.email}`,
+					link: `/friend/${user.email}`,
 					userId: customerId,
 				};
 				notificationFunctions.sendNotifs(notifData);
@@ -153,7 +153,7 @@ const dbUpdates = (
 						transactionId: transRef.id,
 						amount: Math.abs(amt).toString(),
 					},
-					link: `/customer/${user.email}`,
+					link: `/friend/${user.email}`,
 					userId: customerId,
 				};
 				notificationFunctions.sendNotifs(notifData);

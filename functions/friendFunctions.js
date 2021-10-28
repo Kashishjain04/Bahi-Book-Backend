@@ -42,7 +42,7 @@ const addCustomer = (res, user, id, name) => {
 							type: "friend",
 							friendId: user.email,
 						},
-						link: `/customer/${user.email}`,
+						link: `/friend/${user.email}`,
 						userId: id,
 					};
 					notificationFunctions.sendNotifs(notifData);					

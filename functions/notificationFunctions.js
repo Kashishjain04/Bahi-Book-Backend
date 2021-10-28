@@ -4,6 +4,9 @@ const axios = require("axios").default;
 const expoPushUrl = "https://exp.host/--/api/v2/push/send";
 
 const expoPush = ({ tokens, title, body, data }) => {
+	if (!tokens || !tokens.length) {
+		return { error: "no tokens to send notifications" };
+	}
 	let msgs = [];
 	tokens.forEach((token) => {
 		msgs.push({
