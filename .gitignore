@@ -1,4 +1,6 @@
 node_modules
-firebase-key.json
 .env
 .DS_Store
+.vercel
+**lock**
+vercel.json
